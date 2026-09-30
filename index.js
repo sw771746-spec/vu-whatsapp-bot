@@ -4,25 +4,44 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 
-const client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        headless: true,
-        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        timeout: 60000,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu'
-        ]
-    }
+// Prevent bot from crashing on unexpected errors
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err.message);
 });
 
-const OWNER_NAME = "𝕊𝕟𝕠𝕨𝕎𝕙𝕚𝕥𝕖💦";
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Automatically detect environment (Cloud vs Local Windows)
+const isCloud = process.env.NODE_ENV === 'production' || fs.existsSync('/usr/bin/google-chrome-stable');
+
+const puppeteerConfig = {
+    headless: true,
+    args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+    ]
+};
+
+// Set correct Chrome executable path based on environment
+if (isCloud) {
+    puppeteerConfig.executablePath = '/usr/bin/google-chrome-stable';
+} else {
+    puppeteerConfig.executablePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+}
+
+const client = new Client({
+    authStrategy: new LocalAuth(),
+    puppeteer: puppeteerConfig
+});
+
+const OWNER_NAME = "𝕊𝕟𝕠𝕨𝕎𝕙𝕚𝙩𝕖💦";
 const approvedGroups = new Set();
 
 // Cache folder for temporary downloads
@@ -61,6 +80,14 @@ client.on('qr', (qr) => {
 client.on('ready', () => {
     console.log(`\n✅ Bot Successfully Online! Owner: ${OWNER_NAME}\n`);
     console.log("Listening for !activate command in groups...\n");
+});
+
+client.on('auth_failure', (msg) => {
+    console.error('Authentication failed', msg);
+});
+
+client.on('disconnected', (reason) => {
+    console.log('Client was logged out', reason);
 });
 
 client.on('message_create', async (msg) => {
